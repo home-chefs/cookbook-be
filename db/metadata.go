@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"kalos-cookbook/errors"
 	"log/slog"
 	"os"
@@ -29,28 +30,28 @@ func (db *DB) RunMigrations(ctx context.Context) error {
 			slog.Info("Running new migration", "path", filename)
 			query, err := os.ReadFile(file)
 			if err != nil {
-				return errors.Wrap(err, "fetch migration files from path")
+				return errors.Wrap(err, fmt.Sprintf("fetch migration files from path for migration %v", filename))
 			}
 			tx, err := db.sqlite.BeginTx(ctx, nil)
 			if err != nil {
-				return errors.Wrap(err, "begin db tx")
+				return errors.Wrap(err, fmt.Sprintf("begin db tx for migration %v", filename))
 			}
 
 			_, err = tx.Exec(string(query))
 			if err != nil {
 				tx.Rollback()
-				return errors.Wrap(err, "exec db migration")
+				return errors.Wrap(err, fmt.Sprintf("exec db migration for migration %v", filename))
 			}
 
 			_, err = tx.Exec(`INSERT INTO db_metadata (migration) VALUES (?);`, filename)
 			if err != nil {
 				tx.Rollback()
-				return errors.Wrap(err, "exec migration in db_metadata")
+				return errors.Wrap(err, fmt.Sprintf("exec migration in db_metadata for migration %v", filename))
 			}
 
 			err = tx.Commit()
 			if err != nil {
-				return errors.Wrap(err, "commit db tx")
+				return errors.Wrap(err, fmt.Sprintf("commit db tx for migration %v", filename))
 			}
 		}
 	}
@@ -72,7 +73,7 @@ func (db *DB) readMetadata(ctx context.Context) ([]string, error) {
 		var migration string
 		err := rows.Scan(&migration)
 		if err != nil {
-			return nil, errors.Wrap(err, "scan migration row")
+			return nil, errors.Wrap(err, "scan migration for row")
 		}
 		migrations = append(migrations, migration)
 	}

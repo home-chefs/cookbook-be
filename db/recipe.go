@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"kalos-cookbook/errors"
@@ -38,7 +39,7 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 		_, err = tx.Exec(insertProductQuery, p.Name, p.Amount, p.AmountType, recipeID)
 		if err != nil {
 			tx.Rollback()
-			return nil, errors.Wrap(err, "exec db tx for product")
+			return nil, errors.Wrap(err, fmt.Sprintf("exec db tx for product %v", p.Name))
 		}
 	}
 
@@ -47,7 +48,7 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 		_, err = tx.Exec(insertLabelQuery, l, recipeID)
 		if err != nil {
 			tx.Rollback()
-			return nil, errors.Wrap(err, "exec db tx for label")
+			return nil, errors.Wrap(err, fmt.Sprintf("exec db tx for label %v", l))
 		}
 	}
 
@@ -145,13 +146,13 @@ func (db *DB) GetRecipes(ctx context.Context, opts *GetRecipesOpts) ([]types.Rec
 	for idx, r := range recipes {
 		products, err := db.GetProducts(ctx, GetProductOpts{RecipeID: r.ID})
 		if err != nil {
-			return nil, errors.Wrap(err, "get products")
+			return nil, errors.Wrap(err, fmt.Sprintf("get products for recipe with id %v", r.ID))
 		}
 		r.Products = products
 
 		labels, err := db.GetLabels(ctx, GetLabelsOpts{RecipeID: r.ID})
 		if err != nil {
-			return nil, errors.Wrap(err, "get labels")
+			return nil, errors.Wrap(err, fmt.Sprintf("get labels for recipe with id %v", r.ID))
 		}
 		r.Labels = labels
 
@@ -193,7 +194,7 @@ func (db *DB) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 		)
 		if err != nil {
 			tx.Rollback()
-			return errors.Wrap(err, "exec db tx for product creation")
+			return errors.Wrap(err, fmt.Sprintf("exec db tx for product creation with recipe id %v", recipe.ID))
 		}
 	}
 
@@ -206,7 +207,7 @@ func (db *DB) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 		_, err = tx.Exec(insertLabelQuery, l, recipe.ID)
 		if err != nil {
 			tx.Rollback()
-			return errors.Wrap(err, "exec db tx for label creation")
+			return errors.Wrap(err, fmt.Sprintf("exec db tx for label creation with recipe id %v", recipe.ID))
 		}
 	}
 
