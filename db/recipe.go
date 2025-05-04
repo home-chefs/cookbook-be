@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	insertRecipeQuery    = `INSERT INTO recipe (name, time_to_cook, source, video_link, directions) VALUES (?,?,?,?,?);`
+	insertRecipeQuery    = `INSERT INTO recipe (name, time_to_cook, source, video_link, directions, cover_image_path) VALUES (?,?,?,?,?,?);`
 	selectRecipeById     = `SELECT * FROM recipe WHERE id=?;`
-	updateRecipeById     = `UPDATE recipe SET name=?, time_to_cook=?, source=?, video_link=?, directions=? WHERE id=?;`
+	updateRecipeById     = `UPDATE recipe SET name=?, time_to_cook=?, source=?, video_link=?, directions=?, cover_image_path=? WHERE id=?;`
 	deleteRecipeById     = `DELETE FROM recipe WHERE id=?;`
 	selectRecipesBuilder = `SELECT * FROM recipe`
 )
@@ -19,7 +19,7 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 	if err != nil {
 		return nil, err
 	}
-	res, err := tx.Exec(insertRecipeQuery, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions)
+	res, err := tx.Exec(insertRecipeQuery, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions, recipe.CoverImagePath)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -64,7 +64,7 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 func (db *DB) GetRecipeByID(ctx context.Context, id int) (*types.Recipe, error) {
 	var recipe types.Recipe
 	row := db.sqlite.QueryRowContext(ctx, selectRecipeById, id)
-	err := row.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt)
+	err := row.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt, &recipe.CoverImagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (db *DB) GetRecipes(ctx context.Context, opts *GetRecipesOpts) ([]types.Rec
 
 	for recipesRows.Next() {
 		var recipe types.Recipe
-		err = recipesRows.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt)
+		err = recipesRows.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt, &recipe.CoverImagePath)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +172,7 @@ func (db *DB) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 		return err
 	}
 
-	_, err = tx.Exec(updateRecipeById, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions, recipe.ID)
+	_, err = tx.Exec(updateRecipeById, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions, recipe.CoverImagePath, recipe.ID)
 	if err != nil {
 		tx.Rollback()
 		return err
