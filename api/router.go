@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewRouter(ctx context.Context, server Server) (*mux.Router, error) {
+func NewRouter(ctx context.Context, server Server) *mux.Router {
 	r := mux.NewRouter()
 
 	r.Use(contentTypeApplicationJsonMiddleware)
@@ -19,7 +19,7 @@ func NewRouter(ctx context.Context, server Server) (*mux.Router, error) {
 	r.HandleFunc("/recipes/{id}", server.deleteRecipe).Methods(http.MethodDelete)
 	r.HandleFunc("/recipes", server.updateRecipe).Methods(http.MethodPut)
 
-	return r, nil
+	return r
 }
 
 func contentTypeApplicationJsonMiddleware(next http.Handler) http.Handler {

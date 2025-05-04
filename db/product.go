@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+
+	"kalos-cookbook/errors"
 	"kalos-cookbook/types"
 )
 
@@ -29,7 +31,7 @@ func (db *DB) GetProducts(ctx context.Context, opts GetProductOpts) ([]types.Pro
 	query += ";"
 	productRows, err := db.sqlite.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query db for products")
 	}
 	defer productRows.Close()
 	for productRows.Next() {
@@ -38,7 +40,7 @@ func (db *DB) GetProducts(ctx context.Context, opts GetProductOpts) ([]types.Pro
 		if err := productRows.Scan(
 			&product.ID, &product.Name, &product.Amount, &product.AmountType, &product.ProductRecipe,
 		); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scan product row")
 		}
 		products = append(products, product)
 	}

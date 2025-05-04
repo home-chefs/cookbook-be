@@ -2,15 +2,16 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"kalos-cookbook/db"
-	"kalos-cookbook/types"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+
+	"kalos-cookbook/db"
+	"kalos-cookbook/errors"
+	"kalos-cookbook/types"
 
 	"github.com/gorilla/mux"
 )
@@ -20,26 +21,26 @@ func (s *Server) createRecipe(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "read request body"))
 		return
 	}
 
 	var recipe types.Recipe
 	err = json.Unmarshal(body, &recipe)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "unmarshal request body"))
 		return
 	}
 
 	recipeCreated, err := s.DB.CreateRecipe(ctx, recipe)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "create recipe in db"))
 		return
 	}
 
 	recipeJSON, err := json.Marshal(recipeCreated)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "marshal json"))
 		return
 	}
 
@@ -55,7 +56,7 @@ func (s *Server) getAllRecipes(w http.ResponseWriter, r *http.Request) {
 	if sortBy != "" {
 		sortBy, err = formatSort(sortBy)
 		if err != nil {
-			badRequest(w, err)
+			badRequest(w, errors.Wrap(err, "format sort_by"))
 			return
 		}
 	}
@@ -68,7 +69,7 @@ func (s *Server) getAllRecipes(w http.ResponseWriter, r *http.Request) {
 	}
 	recipes, err := s.DB.GetRecipes(ctx, opts)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "get recipes from db"))
 		return
 	}
 
@@ -81,7 +82,7 @@ func (s *Server) getAllRecipes(w http.ResponseWriter, r *http.Request) {
 
 	recipesJSON, err := json.Marshal(filteredRecipes)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "marshal json"))
 		return
 	}
 	w.Write(recipesJSON)
@@ -93,18 +94,18 @@ func (s *Server) getRecipe(w http.ResponseWriter, r *http.Request) {
 	idVar := vars["id"]
 	id, err := strconv.Atoi(idVar)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "convert id to int"))
 		return
 	}
 
 	recipe, err := s.DB.GetRecipeByID(ctx, id)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "get recipe by id from db"))
 		return
 	}
 	recipeJSON, err := json.Marshal(recipe)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "marshal json"))
 		return
 	}
 	w.Write(recipeJSON)
@@ -116,13 +117,13 @@ func (s *Server) deleteRecipe(w http.ResponseWriter, r *http.Request) {
 	idVar := vars["id"]
 	id, err := strconv.Atoi(idVar)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "convert id to int"))
 		return
 	}
 
 	err = s.DB.DeleteRecipeByID(ctx, id)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "delete recipe by id in db"))
 		return
 	}
 
@@ -134,20 +135,20 @@ func (s *Server) updateRecipe(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "read request body"))
 		return
 	}
 
 	var recipe types.Recipe
 	err = json.Unmarshal(body, &recipe)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "unmarshal request body"))
 		return
 	}
 
 	err = s.DB.UpdateRecipe(ctx, recipe)
 	if err != nil {
-		badRequest(w, err)
+		badRequest(w, errors.Wrap(err, "update recipe in db"))
 		return
 	}
 

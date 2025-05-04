@@ -2,6 +2,9 @@ package db
 
 import (
 	"context"
+	"log/slog"
+
+	"kalos-cookbook/errors"
 	"kalos-cookbook/types"
 )
 
@@ -17,17 +20,17 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 	// Insert recipe
 	tx, err := db.sqlite.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "begin db tx")
 	}
 	res, err := tx.Exec(insertRecipeQuery, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions, recipe.CoverImagePath)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, errors.Wrap(err, "exec db tx for recipe")
 	}
 
 	recipeID, err := res.LastInsertId()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "fetch last inserted db id")
 	}
 
 	// Insert products
@@ -35,7 +38,7 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 		_, err = tx.Exec(insertProductQuery, p.Name, p.Amount, p.AmountType, recipeID)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, errors.Wrap(err, "exec db tx for product")
 		}
 	}
 
@@ -44,20 +47,21 @@ func (db *DB) CreateRecipe(ctx context.Context, recipe types.Recipe) (*types.Rec
 		_, err = tx.Exec(insertLabelQuery, l, recipeID)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, errors.Wrap(err, "exec db tx for label")
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "commit db tx")
 	}
 
 	createdRecipe, err := db.GetRecipeByID(ctx, int(recipeID))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get freshly created recipe")
 	}
 
+	slog.Info("Created new recipe", "id", recipeID)
 	return createdRecipe, nil
 }
 
@@ -66,13 +70,13 @@ func (db *DB) GetRecipeByID(ctx context.Context, id int) (*types.Recipe, error) 
 	row := db.sqlite.QueryRowContext(ctx, selectRecipeById, id)
 	err := row.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt, &recipe.CoverImagePath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "scan recipe row")
 	}
 
 	var products []types.Product
 	rowsProducts, err := db.sqlite.QueryContext(ctx, selectProductsByRecipe, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query db for products by recipe")
 	}
 	defer rowsProducts.Close()
 
@@ -82,7 +86,7 @@ func (db *DB) GetRecipeByID(ctx context.Context, id int) (*types.Recipe, error) 
 		if err := rowsProducts.Scan(
 			&product.ID, &product.Name, &product.Amount, &product.AmountType, &product.ProductRecipe,
 		); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scan products rows")
 		}
 		products = append(products, product)
 	}
@@ -91,7 +95,7 @@ func (db *DB) GetRecipeByID(ctx context.Context, id int) (*types.Recipe, error) 
 	var labels []string
 	rowsLabels, err := db.sqlite.QueryContext(ctx, selectLabelsByRecipe, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query db for labels by recipe")
 	}
 	defer rowsLabels.Close()
 
@@ -101,7 +105,7 @@ func (db *DB) GetRecipeByID(ctx context.Context, id int) (*types.Recipe, error) 
 		if err := rowsLabels.Scan(
 			&label.ID, &label.Label, &label.LabelRecipe,
 		); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scan labels rows")
 		}
 		labels = append(labels, label.Label)
 	}
@@ -126,14 +130,14 @@ func (db *DB) GetRecipes(ctx context.Context, opts *GetRecipesOpts) ([]types.Rec
 	var recipes []types.Recipe
 	recipesRows, err := db.sqlite.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query db for recipes")
 	}
 
 	for recipesRows.Next() {
 		var recipe types.Recipe
 		err = recipesRows.Scan(&recipe.ID, &recipe.Name, &recipe.TimeToCook, &recipe.Source, &recipe.VideoLink, &recipe.Directions, &recipe.CreatedAt, &recipe.CoverImagePath)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scan recipes rows")
 		}
 		recipes = append(recipes, recipe)
 	}
@@ -141,13 +145,13 @@ func (db *DB) GetRecipes(ctx context.Context, opts *GetRecipesOpts) ([]types.Rec
 	for idx, r := range recipes {
 		products, err := db.GetProducts(ctx, GetProductOpts{RecipeID: r.ID})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "get products")
 		}
 		r.Products = products
 
 		labels, err := db.GetLabels(ctx, GetLabelsOpts{RecipeID: r.ID})
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "get labels")
 		}
 		r.Labels = labels
 
@@ -160,7 +164,7 @@ func (db *DB) GetRecipes(ctx context.Context, opts *GetRecipesOpts) ([]types.Rec
 func (db *DB) DeleteRecipeByID(ctx context.Context, id int) error {
 	_, err := db.sqlite.ExecContext(ctx, deleteRecipeById, id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "exec db tx for recipe")
 	}
 
 	return nil
@@ -169,19 +173,19 @@ func (db *DB) DeleteRecipeByID(ctx context.Context, id int) error {
 func (db *DB) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 	tx, err := db.sqlite.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "begin db tx")
 	}
 
 	_, err = tx.Exec(updateRecipeById, recipe.Name, recipe.TimeToCook, recipe.Source, recipe.VideoLink, recipe.Directions, recipe.CoverImagePath, recipe.ID)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return errors.Wrap(err, "exec db tx for recipe")
 	}
 
 	_, err = tx.Exec(deleteProductByRecipe, recipe.ID)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return errors.Wrap(err, "exec db tx for product deletion")
 	}
 	for _, p := range recipe.Products {
 		_, err = tx.Exec(
@@ -189,28 +193,30 @@ func (db *DB) UpdateRecipe(ctx context.Context, recipe types.Recipe) error {
 		)
 		if err != nil {
 			tx.Rollback()
-			return err
+			return errors.Wrap(err, "exec db tx for product creation")
 		}
 	}
 
 	_, err = tx.Exec(deleteLabelByRecipe, recipe.ID)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return errors.Wrap(err, "exec db tx for label deletion")
 	}
 	for _, l := range recipe.Labels {
 		_, err = tx.Exec(insertLabelQuery, l, recipe.ID)
 		if err != nil {
 			tx.Rollback()
-			return err
+			return errors.Wrap(err, "exec db tx for label creation")
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
-		return err
+		return errors.Wrap(err, "commit db tx")
 	}
+
+	slog.Info("Updated recipe", "id", recipe.ID)
 
 	return nil
 }

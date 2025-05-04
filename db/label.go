@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+
+	"kalos-cookbook/errors"
 	"kalos-cookbook/types"
 )
 
@@ -29,7 +31,7 @@ func (db *DB) GetLabels(ctx context.Context, opts GetLabelsOpts) ([]string, erro
 	query += ";"
 	labelRows, err := db.sqlite.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "query db for labels")
 	}
 
 	defer labelRows.Close()
@@ -39,7 +41,7 @@ func (db *DB) GetLabels(ctx context.Context, opts GetLabelsOpts) ([]string, erro
 		if err := labelRows.Scan(
 			&label.ID, &label.Label, &label.LabelRecipe,
 		); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "scan label row")
 		}
 		labels = append(labels, label.Label)
 	}

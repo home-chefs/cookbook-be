@@ -1,9 +1,10 @@
 module kalos-cookbook
 
-go 1.23.6
+go 1.23
 
 require (
 	github.com/gorilla/mux v1.8.1
+	github.com/lmittmann/tint v1.0.7
 	modernc.org/sqlite v1.36.0
 )
 

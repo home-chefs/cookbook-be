@@ -2,54 +2,60 @@ package db
 
 import (
 	"context"
+	"kalos-cookbook/errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
 )
 
 func (db *DB) RunMigrations(ctx context.Context) error {
+	migrationsPath := "./db/migrate/*.sql"
+	slog.Info("Running SQLite migrations...", "path", migrationsPath)
 	migrationsDB, err := db.readMetadata(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "read sqlite metadata")
 	}
 
-	migrationsFiles, err := filepath.Glob("./db/migrate/*.sql")
+	migrationsFiles, err := filepath.Glob(migrationsPath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "fetch migration files from path")
 	}
 
 	for _, file := range migrationsFiles {
 		filename := filepath.Base(file)
 
 		if !slices.Contains(migrationsDB, filename) {
+			slog.Info("Running new migration", "path", filename)
 			query, err := os.ReadFile(file)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "fetch migration files from path")
 			}
 			tx, err := db.sqlite.BeginTx(ctx, nil)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "begin db tx")
 			}
 
 			_, err = tx.Exec(string(query))
 			if err != nil {
 				tx.Rollback()
-				return err
+				return errors.Wrap(err, "exec db migration")
 			}
 
 			_, err = tx.Exec(`INSERT INTO db_metadata (migration) VALUES (?);`, filename)
 			if err != nil {
 				tx.Rollback()
-				return err
+				return errors.Wrap(err, "exec migration in db_metadata")
 			}
 
 			err = tx.Commit()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "commit db tx")
 			}
 		}
 	}
 
+	slog.Info("SQLite migration done")
 	return nil
 }
 
@@ -58,7 +64,7 @@ func (db *DB) readMetadata(ctx context.Context) ([]string, error) {
 
 	rows, err := db.sqlite.QueryContext(ctx, `SELECT migration FROM db_metadata;`)
 	if err != nil {
-		return migrations, err
+		return nil, errors.Wrap(err, "query migration from db_metadata")
 	}
 
 	defer rows.Close()
@@ -66,7 +72,7 @@ func (db *DB) readMetadata(ctx context.Context) ([]string, error) {
 		var migration string
 		err := rows.Scan(&migration)
 		if err != nil {
-			return migrations, err
+			return nil, errors.Wrap(err, "scan migration row")
 		}
 		migrations = append(migrations, migration)
 	}
