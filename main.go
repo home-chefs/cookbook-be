@@ -18,7 +18,7 @@ func main() {
 	if err != nil && err != os.ErrExist {
 		panic(err)
 	}
-	path := filepath.Join(".", "db", "sqlite.db")
+	path := filepath.Join(".", "sqlite", "sqlite.db")
 	sqlite, err := db.InitSqlite(ctx, path)
 	if err != nil {
 		panic(err)

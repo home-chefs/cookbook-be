@@ -10,6 +10,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y
 
 COPY --from=builder /app/cookbook/cookbook /usr/local/bin/
+COPY --from=builder /app/cookbook/db/migrate /opt/cookbook/db/migrate
 
 ENV USER=cookbook
 ENV UID=1000
