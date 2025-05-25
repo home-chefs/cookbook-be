@@ -13,6 +13,8 @@ func NewRouter(ctx context.Context, server Server) *mux.Router {
 	r.Use(contentTypeApplicationJsonMiddleware)
 	r.Use(accessControlMiddleware)
 
+	r.HandleFunc("/health", server.health).Methods(http.MethodGet)
+
 	r.HandleFunc("/recipes", server.createRecipe).Methods(http.MethodPost)
 	r.HandleFunc("/recipes", server.getAllRecipes).Methods(http.MethodGet)
 	r.HandleFunc("/recipes/{id}", server.getRecipe).Methods(http.MethodGet)
@@ -32,13 +34,13 @@ func contentTypeApplicationJsonMiddleware(next http.Handler) http.Handler {
 
 func accessControlMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS,PUT")
-		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type")
+		header := w.Header()
 
-		if r.Method == "OPTIONS" {
-			return
-		}
+		header.Set("Access-Control-Allow-Origin", "*")
+		header.Set("Access-Control-Allow-Credentials", "true")
+		header.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+		header.Set("Access-Control-Allow-Headers", "*")
+		header.Set("Access-Control-Max-Age", "86400")
 
 		next.ServeHTTP(w, r)
 	})
