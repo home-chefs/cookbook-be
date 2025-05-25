@@ -44,5 +44,5 @@ func main() {
 
 	httpPort := "8080"
 	slog.Info("HTTP server started", "port", httpPort)
-	http.ListenAndServe(":"+httpPort, server.Router)
+	http.ListenAndServe(":"+httpPort, server.Handler)
 }

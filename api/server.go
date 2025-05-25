@@ -3,15 +3,16 @@ package api
 import (
 	"context"
 	"log/slog"
+	"net/http"
 
 	"kalos-cookbook/db"
 
-	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 type Server struct {
-	Router *mux.Router
-	DB     *db.DB
+	Handler http.Handler
+	DB      *db.DB
 }
 
 func NewServer(ctx context.Context, db *db.DB) *Server {
@@ -20,7 +21,9 @@ func NewServer(ctx context.Context, db *db.DB) *Server {
 		DB: db,
 	}
 
-	server.Router = NewRouter(ctx, *server)
+	router := NewRouter(ctx, *server)
+	handler := cors.AllowAll().Handler(router)
+	server.Handler = handler
 
 	return server
 }

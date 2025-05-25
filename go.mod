@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/gorilla/mux v1.8.1
 	github.com/lmittmann/tint v1.0.7
+	github.com/rs/cors v1.11.1
 	modernc.org/sqlite v1.36.0
 )
 
