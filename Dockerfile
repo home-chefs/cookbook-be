@@ -7,7 +7,7 @@ RUN go build -o cookbook
 RUN echo "Built cookbook"
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y
+RUN apt-get update && apt-get install -y curl
 
 COPY --from=builder /app/cookbook/cookbook /usr/local/bin/
 COPY --from=builder /app/cookbook/db/migrate /opt/cookbook/db/migrate
