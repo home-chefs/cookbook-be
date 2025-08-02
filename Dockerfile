@@ -3,7 +3,7 @@ WORKDIR /app/cookbook
 
 COPY . .
 
-RUN go build -o cookbook
+RUN CGO_ENABLED=0 go build -o cookbook
 RUN echo "Built cookbook"
 
 FROM debian:bookworm-slim
